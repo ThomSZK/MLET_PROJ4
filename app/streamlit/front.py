@@ -5,7 +5,7 @@ import plotly.graph_objects as go
 import requests
 import json 
 
-API_URL = "http://0.0.0.0:8000/LSTM_Predict"
+API_URL = "http://fastapi:8000/LSTM_Predict"
 
 min_date = datetime.datetime(2020, 1, 1)
 max_date = datetime.datetime.now()

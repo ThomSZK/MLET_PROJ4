@@ -1,0 +1,28 @@
+# version: "3"
+
+services:
+  streamlit:
+    build: streamlit
+    ports:
+      - "8501:8501"
+    depends_on:
+      - fastapi
+    volumes:
+      - ./streamlit:/app
+    restart: always
+    networks:
+      - app
+    container_name: streamlit
+  fastapi:
+    build: fastapi
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./fastapi:/app
+    restart: always
+    networks:
+      - app
+    container_name: fastapi
+networks:
+  app:
+    driver: bridge
