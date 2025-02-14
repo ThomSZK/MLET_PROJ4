@@ -5,6 +5,8 @@ import numpy as np
 import tensorflow as tf
 from sklearn.preprocessing import MinMaxScaler
 from pydantic import BaseModel
+from keras.metrics import MeanAbsoluteError
+from keras.models import load_model
 
 app = FastAPI()
 
@@ -17,6 +19,8 @@ class StockRequest(BaseModel):
     end_date: str
 
 def dataframe_prep(stock_data: pd.DataFrame) -> pd.DataFrame:
+
+    scaler = MinMaxScaler(feature_range=(0, 1))
     df = stock_data.copy()
     close_df = df.xs('Close', level=0, axis=1)
     high_df = df.xs('High', level=0, axis=1)
@@ -41,6 +45,9 @@ def dataframe_prep(stock_data: pd.DataFrame) -> pd.DataFrame:
     # 'Date': dates, 'Close': close, 'High': high, 'Low': low, 'Open': open, 'Volume': volume
     data = pd.DataFrame({'Date': dates, 'Close': close, 'High': high, 'Low': low, 'Open': open, 'Volume': volume})
     data.index = data.pop('Date')
+
+    data = scaler.fit_transform(data)
+    data = pd.DataFrame(data, columns=['Close', 'High', 'Low', 'Open', 'Volume'])	
 
     return data 
 
@@ -87,20 +94,39 @@ def window_x_y_shape(dataframe: pd.DataFrame, window_size: int, features: int) -
     
     return dates, X.astype(np.float32), y.astype(np.float32)
 
+@app.get("/")
+async def root():
+    return {"message": "API up and running!"}
+
 @app.post("/LSTM_Predict")
 
 async def LSTM_Predict(stock_request: StockRequest):
-    scaler = MinMaxScaler(feature_range=(0, 1))
     scaler_reverse = MinMaxScaler(feature_range=(0, 1))
     stock_data = yf.download(stock_request.ticker, start=stock_request.start_date, end=stock_request.end_date)
-    
+    scaler_reverse.fit(stock_data[['Close']])
+
+    print(stock_data)
+
     data_prep = dataframe_prep(stock_data)
-    data_prep = scaler.fit_transform(data_prep)
-    scaler_reverse.fit(data_prep['Close'])
+
+    print(data_prep)
+
     data_window = rolling_window(data_prep, WINDOW_SIZE, FEATURES)
+
+    print(data_window)
+
     dates, X, y = window_x_y_shape(data_window, WINDOW_SIZE, FEATURES)
 
-    model = tf.keras.models.load_model("model/best_model_2020_20.h5")
+    print(X)
+
+    mae = MeanAbsoluteError()
+    model = load_model('model/MSFT_2020_20.h5', custom_objects={'mae': mae})
     predicted_prices = model.predict(X)
+
+    print(predicted_prices)
+
+    dates = dates.tolist()
+    predicted_prices = scaler_reverse.inverse_transform(predicted_prices).flatten().tolist()
     
+
     return {"predicted_price": predicted_prices, "dates": dates}

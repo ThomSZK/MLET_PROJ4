@@ -11,4 +11,5 @@ COPY . .
 
 EXPOSE 8501
 
-ENTRYPOINT [ "streamlit", "run", "front.py", "--server.port", "8501" ]a
+ENTRYPOINT ["streamlit", "run"]
+CMD ["front.py"]
