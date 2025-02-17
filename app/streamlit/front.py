@@ -49,8 +49,6 @@ if st.button("Predict"):
 
         predicted_price = np.array(predicted_price)
 
-        print(dates)
-
         dates = pd.to_datetime(dates).to_numpy()
         
         fig = go.Figure()

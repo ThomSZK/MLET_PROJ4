@@ -7,6 +7,7 @@ from sklearn.preprocessing import MinMaxScaler
 from pydantic import BaseModel
 from keras.metrics import MeanAbsoluteError
 from keras.models import load_model
+from datetime import timedelta 
 
 app = FastAPI()
 
@@ -120,4 +121,4 @@ async def LSTM_Predict(stock_request: StockRequest):
 
     predicted_prices = scaler_reverse.inverse_transform(predicted_prices).flatten().tolist()
     
-    return {"predicted_price": predicted_prices, "dates": dates[30:]}
+    return {"predicted_price": predicted_prices, "dates": dates[WINDOW_SIZE+1:]}
