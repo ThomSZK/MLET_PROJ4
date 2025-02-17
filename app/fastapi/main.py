@@ -44,12 +44,15 @@ def dataframe_prep(stock_data: pd.DataFrame) -> pd.DataFrame:
 
     # 'Date': dates, 'Close': close, 'High': high, 'Low': low, 'Open': open, 'Volume': volume
     data = pd.DataFrame({'Date': dates, 'Close': close, 'High': high, 'Low': low, 'Open': open, 'Volume': volume})
+    
+    dates = data['Date']
+
     data.index = data.pop('Date')
 
     data = scaler.fit_transform(data)
     data = pd.DataFrame(data, columns=['Close', 'High', 'Low', 'Open', 'Volume'])	
 
-    return data 
+    return data, dates
 
 def rolling_window(dataframe: pd.DataFrame, window_size: int, features: int) -> pd.DataFrame:
     """
@@ -105,28 +108,16 @@ async def LSTM_Predict(stock_request: StockRequest):
     stock_data = yf.download(stock_request.ticker, start=stock_request.start_date, end=stock_request.end_date)
     scaler_reverse.fit(stock_data[['Close']])
 
-    print(stock_data)
-
-    data_prep = dataframe_prep(stock_data)
-
-    print(data_prep)
+    data_prep, dates = dataframe_prep(stock_data)
 
     data_window = rolling_window(data_prep, WINDOW_SIZE, FEATURES)
 
-    print(data_window)
-
-    dates, X, y = window_x_y_shape(data_window, WINDOW_SIZE, FEATURES)
-
-    print(X)
+    index_date, X, y = window_x_y_shape(data_window, WINDOW_SIZE, FEATURES)
 
     mae = MeanAbsoluteError()
     model = load_model('model/MSFT_2020_20.h5', custom_objects={'mae': mae})
     predicted_prices = model.predict(X)
 
-    print(predicted_prices)
-
-    dates = dates.tolist()
     predicted_prices = scaler_reverse.inverse_transform(predicted_prices).flatten().tolist()
     
-
-    return {"predicted_price": predicted_prices, "dates": dates}
+    return {"predicted_price": predicted_prices, "dates": dates[30:]}

@@ -5,6 +5,7 @@ import plotly.graph_objects as go
 import requests
 import json 
 import pandas as pd
+import numpy as np
 
 API_URL = "http://fastapi:8000/LSTM_Predict"
 
@@ -23,12 +24,14 @@ else:
 
 stock_data = yf.download(stock_tick, start=start_date, end=end_date)
 stock_data.reset_index(inplace=True)
-stock_data["Date"] = pd.to_datetime(stock_data['Date'])
+close_df = stock_data[['Date', 'Close']].copy()
+dates = close_df['Date'].values.flatten()
+close = close_df['Close'].values.flatten()
+data = pd.DataFrame({'Date': dates, 'Close': close})
 
-print(stock_data)
 
 fig = go.Figure()
-fig.add_trace(go.Scatter(x=stock_data['Date'], y=stock_data["Close"], name="Close"))
+fig.add_trace(go.Scatter(x=data['Date'], y=data["Close"], name="Close"))
 fig.update_layout(title=f"{stock_tick} Stock Price", xaxis_title="Date", yaxis_title="Price")
 st.plotly_chart(fig)
 
@@ -40,13 +43,19 @@ if st.button("Predict"):
         response.raise_for_status()
 
         prediction = json.loads(response.text)
+
         predicted_price = prediction["predicted_price"]
-        dates = prediction["dates"]
-        actual_prices = stock_data
+        dates = list(prediction["dates"].values())
+
+        predicted_price = np.array(predicted_price)
+
+        print(dates)
+
+        dates = pd.to_datetime(dates).to_numpy()
         
         fig = go.Figure()
-        fig.add_trace(go.Scatter(x=stock_data.index, y=actual_prices, mode="lines", name="Actual"))
-        # fig.add_trace(go.Scatter(x=[stock_data.index[-1], stock_data.index[-1] + datetime.timedelta(days=1)], y=[actual_prices[-1], predicted_price], mode="lines", name="Predicted"))
+        fig.add_trace(go.Scatter(x=data['Date'], y=data['Close'], mode="lines", name="Actual"))
+        fig.add_trace(go.Scatter(x=dates, y=predicted_price, mode="lines", name="Predicted"))
         fig.update_layout(title=f"{stock_tick} Stock Price")
         st.plotly_chart(fig)
 
